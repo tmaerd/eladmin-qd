@@ -3,12 +3,12 @@
     <!--表单组件-->
     <eForm ref="form" :is-add="isAdd"/>
     <el-row :gutter="10">
-      <el-col :xs="24" :sm="24" :md="10" :lg="10" :xl="10">
+      <el-col :xs="24" :sm="24" :md="10" :lg="10" :xl="10" style="margin-bottom: 10px">
         <el-card class="box-card">
           <div slot="header" class="clearfix">
             <span>字典列表</span>
             <el-button
-              v-permission="['ADMIN','DICT_ALL','DICT_CREATE']"
+              v-permission="['admin','dict:add']"
               class="filter-item"
               size="mini"
               style="float: right;padding: 4px 10px"
@@ -19,21 +19,28 @@
           <!--工具栏-->
           <div class="head-container">
             <!-- 搜索 -->
-            <el-input v-model="query.value" clearable placeholder="输入搜索内容" style="width: 200px;" class="filter-item" @keyup.enter.native="toQuery"/>
-            <el-select v-model="query.type" clearable placeholder="类型" class="filter-item" style="width: 130px">
-              <el-option v-for="item in queryTypeOptions" :key="item.key" :label="item.display_name" :value="item.key"/>
-            </el-select>
+            <el-input v-model="query.value" clearable placeholder="输入名称或者描述搜索" style="width: 200px;" class="filter-item" @keyup.enter.native="toQuery"/>
             <el-button class="filter-item" size="mini" type="success" icon="el-icon-search" @click="toQuery">搜索</el-button>
+            <!-- 导出 -->
+            <div style="display: inline-block;">
+              <el-button
+                :loading="downloadLoading"
+                size="mini"
+                class="filter-item"
+                type="warning"
+                icon="el-icon-download"
+                @click="download">导出</el-button>
+            </div>
           </div>
           <!--表格渲染-->
           <el-table v-loading="loading" :data="data" size="small" highlight-current-row style="width: 100%;" @current-change="handleCurrentChange">
             <el-table-column :show-overflow-tooltip="true" prop="name" label="名称"/>
             <el-table-column :show-overflow-tooltip="true" prop="remark" label="描述"/>
-            <el-table-column v-if="checkPermission(['ADMIN','DICT_ALL','DICT_EDIT','DICT_DELETE'])" label="操作" width="130px" align="center">
+            <el-table-column v-if="checkPermission(['admin','dict:edit','dict:del'])" label="操作" width="130px" align="center" fixed="right">
               <template slot-scope="scope">
-                <el-button v-permission="['ADMIN','DICT_ALL','DICT_EDIT']" size="mini" type="primary" icon="el-icon-edit" @click="edit(scope.row)"/>
+                <el-button v-permission="['admin','dict:edit']" size="mini" type="primary" icon="el-icon-edit" @click="edit(scope.row)"/>
                 <el-popover
-                  v-permission="['ADMIN','DICT_ALL','DICT_DELETE']"
+                  v-permission="['admin','dict:del']"
                   :ref="scope.row.id"
                   placement="top"
                   width="180">
@@ -62,7 +69,7 @@
           <div slot="header" class="clearfix">
             <span>字典详情</span>
             <el-button
-              v-if="checkPermission(['ADMIN','DICT_ALL','DICT_CREATE']) && this.$refs.dictDetail && this.$refs.dictDetail.dictName"
+              v-if="checkPermission(['admin','dict:add']) && this.$refs.dictDetail && this.$refs.dictDetail.dictName"
               class="filter-item"
               size="mini"
               style="float: right;padding: 4px 10px"
@@ -80,10 +87,12 @@
 <script>
 import checkPermission from '@/utils/permission'
 import initData from '@/mixins/initData'
-import { del } from '@/api/dict'
+import { del, downloadDict } from '@/api/dict'
 import dictDetail from '../dictDetail/index'
+import { downloadFile } from '@/utils/index'
 import eForm from './form'
 export default {
+  name: 'Dict',
   components: { dictDetail, eForm },
   mixins: [initData],
   data() {
@@ -107,9 +116,8 @@ export default {
       const sort = 'id,desc'
       this.params = { page: this.page, size: this.size, sort: sort }
       const query = this.query
-      const type = query.type
       const value = query.value
-      if (type && value) { this.params[type] = value }
+      if (value) { this.params['blurry'] = value }
       if (this.$refs.dictDetail) {
         this.$refs.dictDetail.data = []
         this.$refs.dictDetail.dictName = ''
@@ -150,6 +158,16 @@ export default {
         remark: data.remark
       }
       _this.dialog = true
+    },
+    download() {
+      this.beforeInit()
+      this.downloadLoading = true
+      downloadDict(this.params).then(result => {
+        downloadFile(result, '字典列表', 'xlsx')
+        this.downloadLoading = false
+      }).catch(() => {
+        this.downloadLoading = false
+      })
     }
   }
 }

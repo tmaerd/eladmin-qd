@@ -7,7 +7,7 @@ import Config from '@/config'
 
 // 创建axios实例
 const service = axios.create({
-  baseURL: process.env.BASE_API, // api 的 base_url
+  baseURL: process.env.NODE_ENV === 'production' ? process.env.BASE_API : '/', // api 的 base_url
   timeout: Config.timeout // 请求超时时间
 })
 
@@ -81,7 +81,7 @@ service.interceptors.response.use(
       if (errorMsg !== undefined) {
         Notification.error({
           title: errorMsg,
-          duration: 2500
+          duration: 3000
         })
       }
     }
